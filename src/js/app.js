@@ -1,105 +1,105 @@
-App = {
-  web3Provider: null,
-  contracts: {},
+import React, { Component } from 'react';
+import Menu from './components/MenuComponent';
+import NavBar from './components/NavBarComponent';
+import Footer from './components/FooterComponent';
+import './App.css';
+import {POSTS} from './shared/posts'
+import getWeb3 from "./utils/getWeb3";
+import truffleContract from "truffle-contract";
 
-  init: function() {
-    return App.initWeb3();
-  },
+import "./App.css";
 
-  initWeb3: function() {
-    // Initialize web3 and set the provider to the testRPC.
-    if (typeof web3 !== 'undefined') {
-      App.web3Provider = web3.currentProvider;
-      web3 = new Web3(web3.currentProvider);
-    } else {
-      // set the provider you want from Web3.providers
-      App.web3Provider = new Web3.providers.HttpProvider('http://127.0.0.1:9545');
-      web3 = new Web3(App.web3Provider);
-    }
+class App extends Component {
+  state = { storageValue: 0, web3: null, accounts: null, contract: null };
 
-    return App.initContract();
-  },
+  constructor(props) {
+    super(props);
 
-  initContract: function() {
-    $.getJSON('TutorialToken.json', function(data) {
-      // Get the necessary contract artifact file and instantiate it with truffle-contract.
-      var TutorialTokenArtifact = data;
-      App.contracts.TutorialToken = TruffleContract(TutorialTokenArtifact);
+    this.state = {
+      cars: Cars,
+      web3: null,
+      accounts: null,
+      contract: null
 
-      // Set the provider for our contract.
-      App.contracts.TutorialToken.setProvider(App.web3Provider);
-
-      // Use our contract to retieve and mark the adopted pets.
-      return App.getBalances();
-    });
-
-    return App.bindEvents();
-  },
-
-  bindEvents: function() {
-    $(document).on('click', '#transferButton', App.handleTransfer);
-  },
-
-  handleTransfer: function(event) {
-    event.preventDefault();
-
-    var amount = parseInt($('#TTTransferAmount').val());
-    var toAddress = $('#TTTransferAddress').val();
-
-    console.log('Transfer ' + amount + ' TT to ' + toAddress);
-
-    var tutorialTokenInstance;
-
-    web3.eth.getAccounts(function(error, accounts) {
-      if (error) {
-        console.log(error);
-      }
-
-      var account = accounts[0];
-
-      App.contracts.TutorialToken.deployed().then(function(instance) {
-        tutorialTokenInstance = instance;
-
-        return tutorialTokenInstance.transfer(toAddress, amount, {from: account, gas: 100000});
-      }).then(function(result) {
-        alert('Transfer Successful!');
-        return App.getBalances();
-      }).catch(function(err) {
-        console.log(err.message);
-      });
-    });
-  },
-
-  getBalances: function() {
-    console.log('Getting balances...');
-
-    var tutorialTokenInstance;
-
-    web3.eth.getAccounts(function(error, accounts) {
-      if (error) {
-        console.log(error);
-      }
-
-      var account = accounts[0];
-
-      App.contracts.TutorialToken.deployed().then(function(instance) {
-        tutorialTokenInstance = instance;
-
-        return tutorialTokenInstance.balanceOf(account);
-      }).then(function(result) {
-        balance = result.c[0];
-
-        $('#TTBalance').text(balance);
-      }).catch(function(err) {
-        console.log(err.message);
-      });
-    });
+    };
   }
 
-};
+  render() {
+    return (
+      <div>
+        <NavBar></NavBar>
+        <Menu posts={this.state.posts}/>
+         <Footer /> 
+      </div>
+    );
+  }
+}
 
-$(function() {
-  $(window).load(function() {
-    App.init();
-  });
-});
+export default App;
+
+
+
+
+
+
+  componentDidMount = async () => {
+    try {
+      // Get network provider and web3 instance.
+      const web3 = await getWeb3();
+
+      // Use web3 to get the user's accounts.
+      const accounts = await web3.eth.getAccounts();
+
+      // Get the contract instance.
+      const Contract = truffleContract(SimpleStorageContract);
+      Contract.setProvider(web3.currentProvider);
+      const instance = await Contract.deployed();
+
+      // Set web3, accounts, and contract to the state, and then proceed with an
+      // example of interacting with the contract's methods.
+      this.setState({ web3, accounts, contract: instance }, this.runExample);
+    } catch (error) {
+      // Catch any errors for any of the above operations.
+      alert(
+        `Failed to load web3, accounts, or contract. Check console for details.`
+      );
+      console.log(error);
+    }
+  };
+
+
+
+  runExample = async () => {
+    const { accounts, contract } = this.state;
+
+    // Stores a given value, 5 by default.
+    await contract.set(5, { from: accounts[0] });
+
+    // Get the value from the contract to prove it worked.
+    const response = await contract.get();
+
+    // Update state with the result.
+    this.setState({ storageValue: response.toNumber() });
+  };
+
+  render() {
+    if (!this.state.web3) {
+      return <div>Loading Web3, accounts, and contract...</div>;
+    }
+    return (
+      <div className="App">
+        <h1>Good to Go!</h1>
+        <p>Your Truffle Box is installed and ready.</p>
+        <h2>Smart Contract Example</h2>
+        <p>
+          If your contracts compiled and migrated successfully, below will show
+          a stored value of 5 (by default).
+        </p>
+        <p>
+          Try changing the value stored on <strong>line 40</strong> of App.js.
+        </p>
+        <div>The stored value is: {this.state.storageValue}</div>
+      </div>
+    );
+  }
+}
